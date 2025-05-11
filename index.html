@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Online Code Editor</title>
+<style>
+  /* Reset and base */
+  * {
+    box-sizing: border-box;
+  }
+  body, html {
+    margin: 0; padding: 0; height: 100%;
+    display: flex; flex-direction: column;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #1e1e1e;
+    color: #ddd;
+  }
+  header {
+    background: #007acc;
+    padding: 0.5rem 1rem;
+    color: white;
+    font-weight: 700;
+    font-size: 1.25rem;
+    user-select: none;
+  }
+  main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    height: calc(100vh - 44px);
+  }
+  .toolbar {
+    background: #252526;
+    padding: 0.5rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  select {
+    background: #1e1e1e;
+    border: 1px solid #3c3c3c;
+    color: #ddd;
+    padding: 0.3rem 0.6rem;
+    border-radius: 3px;
+    font-size: 1rem;
+    cursor: pointer;
+  }
+  button {
+    background: #0e639c;
+    color: white;
+    border: none;
+    padding: 0.4rem 0.8rem;
+    border-radius: 3px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button:active {
+    background: #054a7a;
+  }
+  #container {
+    flex: 1;
+    display: flex;
+    height: 100%;
+    overflow: hidden;
+  }
+  #editor {
+    width: 50%;
+    height: 100%;
+    background: #1e1e1e;
+    color: #d4d4d4;
+    font-family: 'Source Code Pro', monospace, monospace;
+    font-size: 14px;
+    line-height: 1.4em;
+    padding: 1rem;
+    border-right: 1px solid #333;
+    resize: none;
+    outline: none;
+    overflow-y: auto;
+  }
+  #preview {
+    width: 50%;
+    height: 100%;
+    border: none;
+    background: white;
+    display: block;
+  }
+  /* Scrollbar for editor */
+  #editor::-webkit-scrollbar {
+    width: 12px;
+  }
+  #editor::-webkit-scrollbar-thumb {
+    background: #555;
+    border-radius: 6px;
+  }
+  #editor::-webkit-scrollbar-track {
+    background: #1e1e1e;
+  }
+  @media (max-width: 700px) {
+    #container {
+      flex-direction: column;
+    }
+    #editor, #preview {
+      width: 100%;
+      height: 50%;
+    }
+  }
+</style>
+</head>
+<body>
+<header>Online Code Editor</header>
+<main>
+  <div class="toolbar">
+    <label for="language">Select Language:</label>
+    <select id="language" aria-label="Select language to code">
+      <option value="html" selected>HTML</option>
+      <option value="css">CSS</option>
+      <option value="js">JavaScript</option>
+      <option value="python">Python (Skulpt)</option>
+    </select>
+    <button id="runBtn">Run</button>
+  </div>
+  <div id="container">
+    <textarea id="editor" spellcheck="false" aria-label="Code editor"></textarea>
+    <iframe id="preview" title="Code output"></iframe>
+  </div>
+</main>
+
+<script>
+  // Default code templates
+  const templates = {
+    html: "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"UTF-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  <title>Document</title>\n</head>\n<body>\n  <h1>Hello, HTML!</h1>\n  <p>Edit this code and click Run.</p>\n</body>\n</html>",
+    css: "body {\n  background-color: #222;\n  color: #eee;\n  font-family: Arial, sans-serif;\n  padding: 20px;\n}\nh1 {\n  color: #4fc3f7;\n}\n",
+    js: "console.log('Hello, JavaScript!');\ndocument.body.innerHTML = '<h1>Hello, JavaScript!</h1><p>Edit this code and click Run.</p>';\n",
+    python: "# Write Python code here and click Run\nprint('Hello, Python!')\n"
+  };
+
+  const editor = document.getElementById('editor');
+  const languageSelect = document.getElementById('language');
+  const runBtn = document.getElementById('runBtn');
+  const previewFrame = document.getElementById('preview');
+
+  // Load initial template code
+  function loadTemplate(lang) {
+    editor.value = templates[lang] || '';
+  }
+  loadTemplate(languageSelect.value);
+
+  // Update editor content on language change
+  languageSelect.addEventListener('change', () => {
+    loadTemplate(languageSelect.value);
+    clearPreview();
+  });
+
+  // Clear preview content
+  function clearPreview() {
+    if(languageSelect.value === 'python'){
+      previewFrame.srcdoc = "<html><body><pre id='output'></pre></body></html>";
+    } else {
+      previewFrame.srcdoc = "";
+    }
+  }
+
+  // Run code handler
+  runBtn.addEventListener('click', () => {
+    const lang = languageSelect.value;
+    const code = editor.value;
+
+    if(lang === 'html') {
+      previewFrame.srcdoc = code;
+    }
+    else if(lang === 'css') {
+      // For CSS only, create an HTML wrapper applying the CSS
+      const htmlTemplate = `
+        <!DOCTYPE html><html><head><style>${code}</style></head><body>
+        <h1>CSS Preview</h1>
+        <p>Your CSS styles are applied to this text</p>
+        </body></html>`;
+      previewFrame.srcdoc = htmlTemplate;
+    }
+    else if(lang === 'js') {
+      // For JS, execute inside iframe: HTML with script tag with code
+      const htmlTemplate = `
+        <!DOCTYPE html><html><head>
+        <style>body {font-family: monospace; background:#1e1e1e; color:#d4d4d4; padding: 10px;}</style>
+        </head><body>
+        <script>
+          try {
+            ${code}
+          } catch(e) {
+            document.body.innerHTML = '<pre style="color:red;">' + e + '</pre>';
+          }
+        <\/script>
+        </body></html>`;
+      previewFrame.srcdoc = htmlTemplate;
+    }
+    else if(lang === 'python') {
+      runPython(code);
+    }
+  });
+
+  // Load Skulpt for Python interpretation
+  // This script is loaded on demand for performance
+  let skulptReady = false;
+  function loadSkulpt(callback){
+    if(skulptReady) { callback(); return; }
+    const skulptScript = document.createElement('script');
+    skulptScript.src = 'https://cdn.jsdelivr.net/npm/skulpt@1.2.0/skulpt.min.js';
+    skulptScript.onload = () => {
+      const skulptStdlib = document.createElement('script');
+      skulptStdlib.src = 'https://cdn.jsdelivr.net/npm/skulpt@1.2.0/skulpt-stdlib.js';
+      skulptStdlib.onload = () => {
+        skulptReady = true;
+        callback();
+      };
+      document.head.appendChild(skulptStdlib);
+    };
+    document.head.appendChild(skulptScript);
+  }
+
+  function outf(text) {
+    const outputArea = previewFrame.contentDocument.getElementById('output');
+    if(outputArea) {
+      outputArea.textContent += text;
+    }
+  }
+  function builtinRead(x) {
+    if (Sk.builtinFiles === undefined || Sk.builtinFiles["files"][x] === undefined)
+      throw "File not found: '" + x + "'";
+    return Sk.builtinFiles["files"][x];
+  }
+  function runPython(code) {
+    loadSkulpt(() => {
+      previewFrame.srcdoc = "<html><body><pre id='output'></pre></body></html>";
+      Sk.pre = "output";
+      Sk.configure({
+        output: outf,
+        read: builtinRead,
+        execLimit: 100000,
+      });
+      (Sk.TurtleGraphics || (Sk.TurtleGraphics = {})).target = previewFrame.contentDocument.body;
+      const myPromise = Sk.misceval.asyncToPromise(function() {
+        return Sk.importMainWithBody("<stdin>", false, code, true);
+      });
+      myPromise.then(() => {},
+        err => {
+          outf('\nError:\n' + err.toString());
+        });
+    });
+  }
+
+  // Load initial empty preview
+  clearPreview();
+
+</script>
+</body>
+</html>
+
+```
